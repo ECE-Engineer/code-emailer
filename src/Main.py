@@ -6,12 +6,20 @@ import filecmp
 import shutil
 import fnmatch
 
-path = 'C:\\Users\\##########\\Desktop\\Courses\\344'
-directory = 'C:\\Users\\##########\\Desktop\\csc344'
-dir1 = 'C:\\Users\\##########\\Desktop\\csc344\\hw1'
-dir2 = 'C:\\Users\\##########\\Desktop\\csc344\\hw2'
-dir3 = 'C:\\Users\\##########\\Desktop\\csc344\\hw3'
-dir4 = 'C:\\Users\\##########\\Desktop\\csc344\\hw4'
+### IMPORTANT THINGS TO KEEP IN MIND
+'''
+INTERESTING issues that using the walk function can cause,
+includes the fact that the program will never see the nested src folder,
+if the src folder per se does NOT also contain ANY ARBITRARY folder!!!
+'''
+
+path = 'C:\\Users\\XXXXXXXX\\Desktop\\Courses\\344'
+directory = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344'
+dir1 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw1'
+dir2 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw2'
+dir3 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw3'
+dir4 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw4'
+dir5 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw5'
 
 if not os.path.exists(directory):
     os.makedirs(directory)
@@ -23,6 +31,8 @@ if not os.path.exists(dir3):
     os.makedirs(dir3)
 if not os.path.exists(dir4):
     os.makedirs(dir4)
+if not os.path.exists(dir5):
+    os.makedirs(dir5)
 
 def copydir(src, dst, symlinks=False, ignore=None):
 	for item in os.listdir(src):
@@ -43,6 +53,9 @@ for root, dirs, files in os.walk(path):
 				somefile = file.rsplit('.', 1)[0]
 				if somefile == 'main' and (file.endswith(".c") or file.endswith(".o")):
 					copydir(root, dir1)
+					break
+				elif somefile == 'Main' and file.endswith(".py"):
+					copydir(root, dir5)
 					break
 				elif file.endswith(".clj"):
 					copydir(newpath, dir2)
