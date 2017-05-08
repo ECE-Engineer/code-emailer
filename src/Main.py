@@ -5,13 +5,12 @@ from os.path import join
 import filecmp
 import shutil
 import fnmatch
+import re
 
 ### IMPORTANT THINGS TO KEEP IN MIND
-'''
-INTERESTING issues that using the walk function can cause,
-includes the fact that the program will never see the nested src folder,
-if the src folder per se does NOT also contain ANY ARBITRARY folder!!!
-'''
+# INTERESTING issues that using the walk function can cause,
+# includes the fact that the program will never see the nested src folder,
+# if the src folder per se does NOT also contain ANY ARBITRARY folder!!!
 
 path = 'C:\\Users\\XXXXXXXX\\Desktop\\Courses\\344'
 directory = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344'
@@ -67,3 +66,109 @@ for root, dirs, files in os.walk(path):
 					copydir(newpath, dir4)
 					break
 print ('DONE!!!')
+
+rootDir = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344'
+symbolsFileName = "symbols.txt"
+
+def buildSymbolsFile():
+    stream = createSymbolsFile()
+    for dirName in os.listdir(rootDir):
+        path = rootDir + "\\" + dirName
+        if (os.path.isdir(path)):
+            extractSymbolsToFile(stream, path)
+    stream.close()
+
+def createSymbolsFile():
+    stream = open(rootDir + "\\" + symbolsFileName, "a+")
+    stream.seek(0)
+    stream.truncate()
+    return stream
+
+def extractSymbolsToFile(stream, filePath):
+    for fileName in os.listdir(filePath):
+        file = createSourceFile(fileName)
+        symbols = file.extractSymbols()
+        appendSymbolsToFile(stream, file, file.extractSymbols())
+
+def appendSymbolsToFile(stream, sourceFile, symbols):
+    for symbol in symbols:
+        stream.write("[" + sourceFile.programName + ", " + symbol + "]\n")
+
+def createSourceFile(fileName):
+    if fileName.endswith(C_File.extension):
+        return C_File(fileName)
+    elif fileName.endswith(C_HeaderFile.extension):
+        return C_HeaderFile(fileName)
+    elif fileName.endswith(ClojureFile.extension):
+        return ClojureFile(fileName)
+    elif fileName.endswith(HaskellFile.extension):
+        return HaskellFile(fileName)
+    elif fileName.endswith(PrologFile.extension):
+        return PrologFile(fileName)
+    elif fileName.endswith(PythonFile.extension):
+        return PythonFile(fileName)
+    else:
+        raise ValueError("Invalid file extension")
+
+class SourceFile():
+    extension = ""
+    regexes = ""
+    path = "C:\\Users\\S\\Desktop\\csc344"
+    directory = ""
+    quotedStringRegex = "(?:\".*?\")|(?:\'.*?\')"
+    programName = ""
+
+    def __init__(self, name):
+        self.name = name
+        self.fullPath = SourceFile.path + self.directory + "\\" + name
+        stream = open(self.fullPath)
+        self.text = stream.read()
+        stream.close()
+
+    def extractSymbols(self):
+        regex = self.commentRegex + "|" + self.quotedStringRegex + "|" + self.identifierRegex
+        symbols = set(re.findall(regex, self.text))
+        symbols.discard('')
+        return symbols
+
+class C_File(SourceFile):
+    extension = ".c"
+    directory = "\\hw1"
+    commentRegex = "(?://+.*(?:\n|$))|(?:\*+.*(?:\n|$))|(?:#+.*(?:\n|$))"
+    identifierRegex = "([a-zA-Z_]+[a-zA-Z0-9_]*)"
+    programName = "C"
+
+class C_HeaderFile(SourceFile):
+    extension = ".h"
+    directory = "\\hw1"
+    commentRegex = "(?://+.*(?:\n|$))|(?:\*+.*(?:\n|$))|(?:#+.*(?:\n|$))"
+    identifierRegex = "([a-zA-Z_]+[a-zA-Z0-9_]*)"
+    programName = "C"
+
+class ClojureFile(SourceFile):
+    extension = ".clj"
+    directory = "\\hw2"
+    commentRegex = "(?:;+.*(?:\n|$))"
+    identifierRegex = "([a-zA-Z]+[a-zA-Z0-9_?-]*)"
+    programName = "Clojure"
+
+class HaskellFile(SourceFile):
+    extension = ".hs"
+    directory = "\\hw3"
+    commentRegex = "(?:--+.*(?:\n|$))"
+    identifierRegex = "([a-zA-Z]+[a-zA-Z0-9_']*)"
+    programName = "Haskell"
+
+class PrologFile(SourceFile):
+    extension = ".pl"
+    directory = "\\hw4"
+    commentRegex = "(?:%+.*(?:\n|$))"
+    identifierRegex = "([a-zA-Z]+[a-zA-Z0-9_]*)"
+    programName = "Prolog"
+
+class PythonFile(SourceFile):
+    extension = ".py"
+    directory = "\\hw5"
+    commentRegex = "(?:#+.*(?:\n|$))"
+    identifierRegex = "([a-zA-Z]+[a-zA-Z0-9_]*[a-zA-Z]+)"
+    programName = "Python"
