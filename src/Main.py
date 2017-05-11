@@ -120,14 +120,19 @@ def createSymbolsFile():
     return stream
 
 def extractSymbolsToFile(stream, filePath):
+    symbolPairs = set()
     for fileName in os.listdir(filePath):
         file = createSourceFile(fileName)
         symbols = file.extractSymbols()
-        appendSymbolsToFile(stream, file, file.extractSymbols())
+        for symbol in symbols:
+            pair = (file.programName, symbol)
+            symbolPairs.add(pair)
+    appendSymbolPairsToFile(stream, symbolPairs)
 
-def appendSymbolsToFile(stream, sourceFile, symbols):
-    for symbol in symbols:
-        stream.write("[" + sourceFile.programName + ", " + symbol + "]\n")
+def appendSymbolPairsToFile(stream, symbolPairs):
+    for pair in symbolPairs:
+        stream.write(str(pair))
+        stream.write("\n")
 
 def createSourceFile(fileName):
     if fileName.endswith(C_File.extension):
@@ -150,7 +155,7 @@ class SourceFile():
     regexes = ""
     path = rootDir
     directory = ""
-    quotedStringRegex = "(?:\".*?\")|(?:\'.*?\')"
+    quotedStringRegex = "(?:\"[\s\S]*?\")|(?:\'.*?\')"
     programName = ""
 
     def __init__(self, name):
@@ -221,10 +226,10 @@ def makeHtmlFile():
 
     message = """<html>
     	<head>
-    		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+    		<meta http-equiv='content-type' content='text/html; charset=utf-8'>
     		<title>Overview</title>
     	</head>
-    		<body style = "background-color:powderblue;">
+    		<body style = 'background-color:powderblue;'>
     			<h1>CSC 344 Overview</h1>
     			<h3>Assignment 1 : Programming Language C</h3>
     				<ol>
@@ -258,7 +263,7 @@ def makeHtmlFile():
     f.write(message)
     f.close()
 
-#webbrowser.open_new_tab('C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\Overview.html')
+#webbrowser.open_new_tab('C:\\Users\\S\\Desktop\\csc344\\Overview.html')
 
 def sendFiles():
     sender = input("From: ")
