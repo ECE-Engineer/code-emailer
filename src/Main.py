@@ -8,10 +8,7 @@ import filecmp
 import shutil
 import fnmatch
 import re
-<<<<<<< HEAD
 import webbrowser
-=======
->>>>>>> refs/remotes/origin/master
 from zipfile import ZipFile
 
 ### IMPORTANT THINGS TO KEEP IN MIND
@@ -87,17 +84,6 @@ print ('DONE!!!')
 
 
 
-def zipFiles():
-    zipRoot = os.path.basename(rootDir)
-    with ZipFile(zipRoot + ".zip", 'w') as zipFile:
-        zipFile.write(rootDir, zipRoot)
-        for path, dirs, files in os.walk(rootDir):
-            for file in files:
-                fileName = os.path.basename(file)
-                relPath = os.path.relpath(path, rootDir)
-                src = os.path.join(path, file)
-                dest = os.path.normpath(os.path.join(zipRoot, relPath, fileName))
-                zipFile.write(src, dest)
 
 def zipFiles():
     zipRoot = os.path.basename(rootDir)
@@ -110,7 +96,6 @@ def zipFiles():
                 src = os.path.join(path, file)
                 dest = os.path.normpath(os.path.join(zipRoot, relPath, fileName))
                 zipFile.write(src, dest)
-
 
 def buildSymbolsFile():
     stream = createSymbolsFile()
