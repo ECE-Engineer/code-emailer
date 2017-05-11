@@ -2,23 +2,36 @@ import os
 import glob
 import sys
 from os.path import join
+from os import listdir
+from os.path import isfile
 import filecmp
 import shutil
 import fnmatch
 import re
+import webbrowser
+from zipfile import ZipFile
 
 ### IMPORTANT THINGS TO KEEP IN MIND
 # INTERESTING issues that using the walk function can cause,
 # includes the fact that the program will never see the nested src folder,
 # if the src folder per se does NOT also contain ANY ARBITRARY folder!!!
 
-path = 'C:\\Users\\XXXXXXXX\\Desktop\\Courses\\344'
-directory = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344'
-dir1 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw1'
-dir2 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw2'
-dir3 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw3'
-dir4 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw4'
-dir5 = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344\\hw5'
+
+
+path = 'C:\\Users\\XXXXXXXXXX\\Desktop\\Courses\\344'
+directory = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344'
+dir1 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw1'
+dir2 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw2'
+dir3 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw3'
+dir4 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw4'
+dir5 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw5'
+
+
+rootDir = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344'
+symbolsFileName = "symbols.txt"
+
+
+
 
 if not os.path.exists(directory):
     os.makedirs(directory)
@@ -67,8 +80,21 @@ for root, dirs, files in os.walk(path):
 					break
 print ('DONE!!!')
 
-rootDir = 'C:\\Users\\XXXXXXXX\\Desktop\\csc344'
-symbolsFileName = "symbols.txt"
+
+
+
+
+def zipFiles():
+    zipRoot = os.path.basename(rootDir)
+    with ZipFile(zipRoot + ".zip", 'w') as zipFile:
+        zipFile.write(rootDir, zipRoot)
+        for path, dirs, files in os.walk(rootDir):
+            for file in files:
+                fileName = os.path.basename(file)
+                relPath = os.path.relpath(path, rootDir)
+                src = os.path.join(path, file)
+                dest = os.path.normpath(os.path.join(zipRoot, relPath, fileName))
+                zipFile.write(src, dest)
 
 def buildSymbolsFile():
     stream = createSymbolsFile()
@@ -172,3 +198,61 @@ class PythonFile(SourceFile):
     commentRegex = "(?:#+.*(?:\n|$))"
     identifierRegex = "([a-zA-Z]+[a-zA-Z0-9_]*[a-zA-Z]+)"
     programName = "Python"
+
+
+
+
+
+
+
+c_files = [f for f in listdir(dir1) if (isfile(join(dir1, f))  and not f.endswith(".o"))]
+clojure_files = [f for f in listdir(dir2) if (isfile(join(dir2, f)) and f.endswith(".clj"))]
+haskell_files = [f for f in listdir(dir3) if (isfile(join(dir3, f)) and (f.rsplit('.', 1)[0] == 'Lib') and f.endswith(".hs"))]
+prolog_files = [f for f in listdir(dir4) if isfile(join(dir4, f))]
+python_files = [f for f in listdir(dir5) if isfile(join(dir5, f))]
+
+
+html_file = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\Overview.html'
+f = open(html_file,'w')
+
+message = """<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>Overview</title>
+	</head>
+		<body style = "background-color:powderblue;">
+			<h1>CSC 344 Overview</h1>
+			<h3>Assignment 1 : Programming Language C</h3>
+				<ol>
+					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[0]) + """\">""" + c_files[0] + """</a></li>
+					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[1]) + """\">""" + c_files[1] + """</a></li>
+					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[2]) + """\">""" + c_files[2] + """</a></li>
+					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[3]) + """\">""" + c_files[3] + """</a></li>
+				</ol>
+			<h3>Assignment 2 : Programming Language Clojure</h3>
+				<ol>
+					<li><a href=\"""" + dir2 + '\\{}'.format(clojure_files[0]) + """\">""" + clojure_files[0] + """</a></li>
+				</ol>
+			<h3>Assignment 3 : Programming Language Haskell</h3>
+				<ol>
+					<li><a href=\"""" + dir3 + '\\{}'.format(haskell_files[0]) + """\">""" + haskell_files[0] + """</a></li>
+				</ol>
+			<h3>Assignment 4 : Programming Language Prolog</h3>
+				<ol>
+					<li><a href=\"""" + dir4 + '\\{}'.format(prolog_files[0]) + """\">""" + prolog_files[0] + """</a></li>
+				</ol>
+			<h3>Assignment 5 : Programming Language Python</h3>
+				<ol>
+					<li><a href=\"""" + dir5 + '\\{}'.format(python_files[0]) + """\">""" + python_files[0] + """</a></li>
+				</ol>
+			<h3>Symbols File</h3>
+				<ol>
+					<li><a href=\"""" + rootDir + '\\{}'.format(symbolsFileName) + """\">""" + symbolsFileName + """</a></li>
+				</ol>
+		</body>
+</html>"""
+
+f.write(message)
+f.close()
+
+#webbrowser.open_new_tab('C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\Overview.html')
