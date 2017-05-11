@@ -10,13 +10,18 @@ import fnmatch
 import re
 import webbrowser
 from zipfile import ZipFile
+import smtplib
+from email import encoders
+from email.message import Message
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart 
+from getpass import getpass
 
 ### IMPORTANT THINGS TO KEEP IN MIND
 # INTERESTING issues that using the walk function can cause,
 # includes the fact that the program will never see the nested src folder,
 # if the src folder per se does NOT also contain ANY ARBITRARY folder!!!
-
-
 
 path = 'C:\\Users\\XXXXXXXXXX\\Desktop\\Courses\\344'
 directory = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344'
@@ -26,25 +31,32 @@ dir3 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw3'
 dir4 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw4'
 dir5 = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\hw5'
 
-
 rootDir = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344'
 symbolsFileName = "symbols.txt"
 
+def setup():
+    initDir()
+    moveSourceFolders()
 
+def main():
+    buildSymbolsFile()
+    makeHtmlFile()
+    zipFiles()
+    sendFiles()
 
-
-if not os.path.exists(directory):
-    os.makedirs(directory)
-if not os.path.exists(dir1):
-    os.makedirs(dir1)
-if not os.path.exists(dir2):
-    os.makedirs(dir2)
-if not os.path.exists(dir3):
-    os.makedirs(dir3)
-if not os.path.exists(dir4):
-    os.makedirs(dir4)
-if not os.path.exists(dir5):
-    os.makedirs(dir5)
+def initDir():
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    if not os.path.exists(dir1):
+        os.makedirs(dir1)
+    if not os.path.exists(dir2):
+        os.makedirs(dir2)
+    if not os.path.exists(dir3):
+        os.makedirs(dir3)
+    if not os.path.exists(dir4):
+        os.makedirs(dir4)
+    if not os.path.exists(dir5):
+        os.makedirs(dir5)
 
 def copydir(src, dst, symlinks=False, ignore=None):
     for item in os.listdir(src):
@@ -55,35 +67,31 @@ def copydir(src, dst, symlinks=False, ignore=None):
         else:
             shutil.copy2(s, d)
 
-# find all the src folders
-for root, dirs, files in os.walk(path):
-  for dir in dirs:
-      newpath = os.path.join(root,dir)
-      if filecmp.dircmp(dir, 'src'):
-          # determine the file extensions of the files found to determine which folder to copy them to
-          for file in files:
-              somefile = file.rsplit('.', 1)[0]
-              if somefile == 'main' and (file.endswith(".c") or file.endswith(".o")):
-                  copydir(root, dir1)
-                  break
-              elif somefile == 'Main' and file.endswith(".py"):
-                  copydir(root, dir5)
-                  break
-              elif file.endswith(".clj"):
-                  copydir(newpath, dir2)
-                  break
-              elif file.endswith(".hs"):
-                  copydir(newpath, dir3)
-                  break
-              elif file.endswith(".pl"):
-                  copydir(newpath, dir4)
-                  break
-print ('DONE!!!')
-
-
-
-
-
+def moveSourceFolders():
+    # find all the src folders
+    for root, dirs, files in os.walk(path):
+      for dir in dirs:
+          newpath = os.path.join(root,dir)
+          if filecmp.dircmp(dir, 'src'):
+              # determine the file extensions of the files found to determine which folder to copy them to
+              for file in files:
+                  somefile = file.rsplit('.', 1)[0]
+                  if somefile == 'main' and (file.endswith(".c") or file.endswith(".o")):
+                      copydir(root, dir1)
+                      break
+                  elif somefile == 'Main' and file.endswith(".py"):
+                      copydir(root, dir5)
+                      break
+                  elif file.endswith(".clj"):
+                      copydir(newpath, dir2)
+                      break
+                  elif file.endswith(".hs"):
+                      copydir(newpath, dir3)
+                      break
+                  elif file.endswith(".pl"):
+                      copydir(newpath, dir4)
+                      break
+    print ('DONE!!!')
 
 def zipFiles():
     zipRoot = os.path.basename(rootDir)
@@ -112,14 +120,19 @@ def createSymbolsFile():
     return stream
 
 def extractSymbolsToFile(stream, filePath):
+    symbolPairs = set()
     for fileName in os.listdir(filePath):
         file = createSourceFile(fileName)
         symbols = file.extractSymbols()
-        appendSymbolsToFile(stream, file, file.extractSymbols())
+        for symbol in symbols:
+            pair = (file.programName, symbol)
+            symbolPairs.add(pair)
+    appendSymbolPairsToFile(stream, symbolPairs)
 
-def appendSymbolsToFile(stream, sourceFile, symbols):
-    for symbol in symbols:
-        stream.write("[" + sourceFile.programName + ", " + symbol + "]\n")
+def appendSymbolPairsToFile(stream, symbolPairs):
+    for pair in symbolPairs:
+        stream.write(str(pair))
+        stream.write("\n")
 
 def createSourceFile(fileName):
     if fileName.endswith(C_File.extension):
@@ -142,7 +155,7 @@ class SourceFile():
     regexes = ""
     path = rootDir
     directory = ""
-    quotedStringRegex = "(?:\".*?\")|(?:\'.*?\')"
+    quotedStringRegex = "(?:\"[\s\S]*?\")|(?:\'.*?\')"
     programName = ""
 
     def __init__(self, name):
@@ -201,59 +214,116 @@ class PythonFile(SourceFile):
     programName = "Python"
 
 
+def makeHtmlFile():
+    c_files = [f for f in listdir(dir1) if (isfile(join(dir1, f))  and not f.endswith(".o"))]
+    clojure_files = [f for f in listdir(dir2) if (isfile(join(dir2, f)) and f.endswith(".clj"))]
+    haskell_files = [f for f in listdir(dir3) if (isfile(join(dir3, f)) and (f.rsplit('.', 1)[0] == 'Lib') and f.endswith(".hs"))]
+    prolog_files = [f for f in listdir(dir4) if isfile(join(dir4, f))]
+    python_files = [f for f in listdir(dir5) if isfile(join(dir5, f))]
 
+    html_file = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\Overview.html'
+    f = open(html_file,'w')
 
+    message = """<html>
+    	<head>
+    		<meta http-equiv='content-type' content='text/html; charset=utf-8'>
+    		<title>Overview</title>
+    	</head>
+    		<body style = 'background-color:powderblue;'>
+    			<h1>CSC 344 Overview</h1>
+    			<h3>Assignment 1 : Programming Language C</h3>
+    				<ol>
+    					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[0]) + """\">""" + c_files[0] + """</a></li>
+    					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[1]) + """\">""" + c_files[1] + """</a></li>
+    					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[2]) + """\">""" + c_files[2] + """</a></li>
+    				</ol>
+    			<h3>Assignment 2 : Programming Language Clojure</h3>
+    				<ol>
+    					<li><a href=\"""" + dir2 + '\\{}'.format(clojure_files[0]) + """\">""" + clojure_files[0] + """</a></li>
+    				</ol>
+    			<h3>Assignment 3 : Programming Language Haskell</h3>
+    				<ol>
+    					<li><a href=\"""" + dir3 + '\\{}'.format(haskell_files[0]) + """\">""" + haskell_files[0] + """</a></li>
+    				</ol>
+    			<h3>Assignment 4 : Programming Language Prolog</h3>
+    				<ol>
+    					<li><a href=\"""" + dir4 + '\\{}'.format(prolog_files[0]) + """\">""" + prolog_files[0] + """</a></li>
+    				</ol>
+    			<h3>Assignment 5 : Programming Language Python</h3>
+    				<ol>
+    					<li><a href=\"""" + dir5 + '\\{}'.format(python_files[0]) + """\">""" + python_files[0] + """</a></li>
+    				</ol>
+    			<h3>Symbols File</h3>
+    				<ol>
+    					<li><a href=\"""" + rootDir + '\\{}'.format(symbolsFileName) + """\">""" + symbolsFileName + """</a></li>
+    				</ol>
+    		</body>
+    </html>"""
 
+    f.write(message)
+    f.close()
 
+#webbrowser.open_new_tab('C:\\Users\\S\\Desktop\\csc344\\Overview.html')
 
-c_files = [f for f in listdir(dir1) if (isfile(join(dir1, f))  and not f.endswith(".o"))]
-clojure_files = [f for f in listdir(dir2) if (isfile(join(dir2, f)) and f.endswith(".clj"))]
-haskell_files = [f for f in listdir(dir3) if (isfile(join(dir3, f)) and (f.rsplit('.', 1)[0] == 'Lib') and f.endswith(".hs"))]
-prolog_files = [f for f in listdir(dir4) if isfile(join(dir4, f))]
-python_files = [f for f in listdir(dir5) if isfile(join(dir5, f))]
+def sendFiles():
+    sender = input("From: ")
+    recipient = input("To: ")
+    pwd = getpass("password: ")
 
+    user = User(sender, pwd)
+    email = Email(sender, [recipient])
+    email.body = "Attached is a zip file generated by our assignment 5 code containing all our source code for the semster, a symbols file, and an outline of everything as an HTML file"
+    email.subject = "CSC 344 Assignment 5"
+    email.attachment = "csc344.zip"
 
-html_file = 'C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\Overview.html'
-f = open(html_file,'w')
+    server = GmailServer()
+    server.start()
+    server.sendEmail(user, email)
+    server.stop()
+    print("Email has been sent to " + recipient)
 
-message = """<html>
-	<head>
-		<meta http-equiv="content-type" content="text/html; charset=utf-8">
-		<title>Overview</title>
-	</head>
-		<body style = "background-color:powderblue;">
-			<h1>CSC 344 Overview</h1>
-			<h3>Assignment 1 : Programming Language C</h3>
-				<ol>
-					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[0]) + """\">""" + c_files[0] + """</a></li>
-					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[1]) + """\">""" + c_files[1] + """</a></li>
-					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[2]) + """\">""" + c_files[2] + """</a></li>
-					<li><a href=\"""" + dir1 + '\\{}'.format(c_files[3]) + """\">""" + c_files[3] + """</a></li>
-				</ol>
-			<h3>Assignment 2 : Programming Language Clojure</h3>
-				<ol>
-					<li><a href=\"""" + dir2 + '\\{}'.format(clojure_files[0]) + """\">""" + clojure_files[0] + """</a></li>
-				</ol>
-			<h3>Assignment 3 : Programming Language Haskell</h3>
-				<ol>
-					<li><a href=\"""" + dir3 + '\\{}'.format(haskell_files[0]) + """\">""" + haskell_files[0] + """</a></li>
-				</ol>
-			<h3>Assignment 4 : Programming Language Prolog</h3>
-				<ol>
-					<li><a href=\"""" + dir4 + '\\{}'.format(prolog_files[0]) + """\">""" + prolog_files[0] + """</a></li>
-				</ol>
-			<h3>Assignment 5 : Programming Language Python</h3>
-				<ol>
-					<li><a href=\"""" + dir5 + '\\{}'.format(python_files[0]) + """\">""" + python_files[0] + """</a></li>
-				</ol>
-			<h3>Symbols File</h3>
-				<ol>
-					<li><a href=\"""" + rootDir + '\\{}'.format(symbolsFileName) + """\">""" + symbolsFileName + """</a></li>
-				</ol>
-		</body>
-</html>"""
+class Email:
+    def __init__(self, sender, recipients):
+        self.sender = sender
+        self.recipients = recipients
+        self.body = ""
+        self.subject = ""
+        self.attachment = None
 
-f.write(message)
-f.close()
+    def getMessage(self):
+        if (self.attachment):
+            msg = MIMEMultipart()
+            msg.attach(MIMEText(self.body))
+            with open(self.attachment, "rb") as file:
+                fileName = os.path.basename(self.attachment)
+                attachment = MIMEApplication(file.read(), Name=fileName)
+                attachment.add_header('Content-Disposition', 'attachment', filename=fileName)
+                msg.attach(attachment)
+        else:
+            msg = MIMEText(self.body)
 
-#webbrowser.open_new_tab('C:\\Users\\XXXXXXXXXX\\Desktop\\csc344\\Overview.html')
+        msg['Subject'] = self.subject
+        msg['From'] = self.sender
+        msg['To'] = ', '.join(self.recipients)
+
+        return msg.as_string()
+
+class User:
+    def __init__(self, email, password):
+        self.email = email
+        self.password = password
+
+class GmailServer:
+    def __init__(self):
+        self.server = smtplib.SMTP('smtp.gmail.com', 587)
+
+    def start(self):
+        self.server.ehlo()
+        self.server.starttls()
+
+    def stop(self):
+        self.server.quit()
+
+    def sendEmail(self, user, email):
+        self.server.login(user.email, user.password)
+        self.server.sendmail(user.email, email.recipients, email.getMessage())
